@@ -79,6 +79,11 @@
     input[type="range"] {
       accent-color: #2563eb;
     }
+    mjx-container[jax="SVG"] {
+      display: inline-block !important;
+      vertical-align: middle !important;
+      margin: 0 2px !important;
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -1070,24 +1075,30 @@ Cho lăng trụ đứng $ABC.A'B'C'$ có đáy $ABC$ là tam giác đều cạnh
             }
           }
         }
-	
+
         stem = stem
           .replace(/\\textbf\{([^}]*)\}/g, '<strong>$1</strong>')
           .replace(/\\textit\{([^}]*)\}/g, '<em>$1</em>')
           .replace(/\\includegraphics(\[[^\]]*\])?\{([^}]*)\}/g, '<div class="text-xs text-blue-600 italic my-1">[Hình minh họa: $2 — Bấm "Đính kèm ảnh" bên dưới để tải ảnh lên]</div>');
-	stem = stem
-  	  .replace(/[\r\n]+/g, ' ')
-  	  .replace(/\s*([.,:;?!])\s*/g, '$1 ')
-  	  .replace(/\s+/g, ' ')
-  	  .trim();
+
+        stem = stem
+          .replace(/[\r\n]+/g, ' ')
+          .replace(/\s*([.,:;?!])\s*/g, '$1 ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
         return {
           id: idx + 1,
           level,
           type: isTF ? 'tf' : 'mcq',
           stem,
-          options,
+          options: options.map((o) => o.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()),
           correctFlags,
-          solution: solution.replace(/\\textbf\{([^}]*)\}/g, '<strong>$1</strong>').replace(/\\\\/g, '<br/>'),
+          solution: solution
+            .replace(/[\r\n]+/g, ' ')
+            .replace(/\\textbf\{([^}]*)\}/g, '<strong>$1</strong>')
+            .replace(/\\\\/g, '<br/>')
+            .trim(),
           imageData: null,
           hint: inferModelHint(stem)
         };
@@ -1207,7 +1218,6 @@ Cho lăng trụ đứng $ABC.A'B'C'$ có đáy $ABC$ là tam giác đều cạnh
           optionsHtml = `<div class="space-y-2 pt-1">` + q.options.map((opt, idx) => {
             const cur = ansArr[idx];
             const isRight = isSubmitted && cur === q.correctFlags[idx];
-            const isWrong = isSubmitted && cur !== null && cur !== q.correctFlags[idx];
             const rowBorder = isSubmitted
               ? (isRight ? 'border-emerald-400 bg-emerald-50/50' : 'border-rose-300 bg-rose-50/40')
               : 'border-slate-200 bg-slate-50/40';
