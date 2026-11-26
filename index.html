@@ -7,6 +7,20 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        macros: {
+          dfrac: ['{\\displaystyle\\frac{#1}{#2}}', 2],
+          widehat: ['\\hat{#1}', 1]
+        }
+      },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -92,11 +106,15 @@
         <button id="m-btn-2" onclick="selectModel(2)" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 cursor-pointer transition">
           3. Lăng trụ đứng
         </button>
+        <button id="m-btn-3" onclick="openPracticeTab()" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-emerald-700 hover:bg-emerald-50 cursor-pointer transition flex items-center gap-1">
+          <span>4. Luyện tập</span>
+        </button>
       </div>
     </div>
   </header>
 
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-3.5 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+  <!-- ==================== VIEW 1: 3D STAGE (MÔ HÌNH 1, 2, 3) ==================== -->
+  <main id="view-3d" class="flex-1 max-w-7xl w-full mx-auto px-4 py-3.5 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
     <!-- LEFT COLUMN: 3D STAGE -->
     <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-3 shadow-sm">
       <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100 text-xs">
@@ -208,6 +226,103 @@
       </div>
     </div>
   </main>
+
+  <!-- ==================== VIEW 2: LUYỆN TẬP & THỐNG KÊ (.TEX EX_TEST) ==================== -->
+  <section id="view-practice" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 py-4 space-y-4">
+    <!-- TOP BAR: THÔNG TIN HỌC SINH, NẠP FILE .TEX & HÀNH ĐỘNG -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      <div class="flex flex-wrap items-center gap-2.5">
+        <input id="stu-name" type="text" placeholder="Họ tên học sinh (VD: Nguyễn Văn A)" class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs sm:text-sm w-56 focus:outline-none focus:border-blue-500" />
+        <input id="stu-class" type="text" value="11A1" placeholder="Lớp" class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs sm:text-sm w-20 text-center font-semibold focus:outline-none focus:border-blue-500" />
+        <select id="level-filter" onchange="renderQuiz()" class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs sm:text-sm font-medium text-slate-700 bg-white">
+          <option value="all">Tất cả mức độ</option>
+          <option value="Mức 1">Mức 1: Nhận biết – Thông hiểu</option>
+          <option value="Mức 2">Mức 2: Vận dụng</option>
+          <option value="Mức 3">Mức 3: Vận dụng cao & Đúng/Sai</option>
+        </select>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <label class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs sm:text-sm font-semibold cursor-pointer transition">
+          Nạp file .tex (ex_test)
+          <input type="file" accept=".tex,.txt" onchange="handleTexUpload(event)" class="hidden" />
+        </label>
+        <button onclick="toggleTexModal()" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold cursor-pointer">
+          Dán code .tex
+        </button>
+        <button onclick="resetQuiz()" class="px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs sm:text-sm font-semibold cursor-pointer">
+          Làm lại
+        </button>
+        <button onclick="submitQuiz()" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-sm cursor-pointer">
+          Nộp bài & Thống kê
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL DÁN CODE .TEX NHANH -->
+    <div id="tex-paste-box" class="hidden bg-white rounded-2xl border border-blue-200 p-4 shadow-sm space-y-2.5">
+      <div class="flex items-center justify-between">
+        <span class="text-xs sm:text-sm font-bold text-blue-800">Dán mã nguồn LaTeX gói ex_test (\begin{ex}...\end{ex})</span>
+        <button onclick="toggleTexModal()" class="text-xs text-slate-500 hover:text-slate-800 cursor-pointer">Đóng &times;</button>
+      </div>
+      <textarea id="tex-raw-input" rows="6" placeholder="Dán nội dung file .tex chứa các khối \begin{ex} ... \choice ... \loigiai{...} \end{ex} vào đây..." class="w-full p-2.5 rounded-xl border border-slate-300 font-mono text-xs focus:outline-none focus:border-blue-500"></textarea>
+      <div class="flex items-center justify-end gap-2">
+        <button onclick="loadDefaultQuestions()" class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+          Khôi phục bộ đề mẫu
+        </button>
+        <button onclick="parsePastedTex()" class="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold cursor-pointer">
+          Tạo đề trắc nghiệm
+        </button>
+      </div>
+    </div>
+
+    <!-- GRID CHÍNH: BÊN TRÁI LÀ ĐỀ THI, BÊN PHẢI LÀ BẢNG THỐNG KÊ -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+      <div id="quiz-container" class="lg:col-span-8 space-y-3"></div>
+
+      <!-- CỘT THỐNG KÊ KẾT QUẢ -->
+      <div class="lg:col-span-4 space-y-3 sticky top-16">
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h2 class="text-sm font-bold text-slate-900">Thống kê kết quả luyện tập</h2>
+            <button onclick="exportStatsCSV()" class="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold cursor-pointer">
+              Xuất CSV
+            </button>
+          </div>
+
+          <div id="stats-summary" class="grid grid-cols-3 gap-2 text-center">
+            <div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
+              <div class="text-[11px] text-emerald-700 font-medium">Điểm số</div>
+              <div id="stat-score" class="text-lg font-extrabold text-emerald-700">-- / 10</div>
+            </div>
+            <div class="p-2.5 rounded-xl bg-blue-50 border border-blue-200">
+              <div class="text-[11px] text-blue-700 font-medium">Số câu đạt</div>
+              <div id="stat-correct" class="text-lg font-extrabold text-blue-700">0 / 0</div>
+            </div>
+            <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200">
+              <div class="text-[11px] text-amber-700 font-medium">Tỷ lệ</div>
+              <div id="stat-rate" class="text-lg font-extrabold text-amber-700">0%</div>
+            </div>
+          </div>
+
+          <div class="space-y-2 pt-1">
+            <div class="text-xs font-bold text-slate-600 uppercase tracking-wider">Phân tích theo mức độ phân hóa</div>
+            <div id="level-breakdown" class="space-y-2 text-xs text-slate-700">
+              <p class="text-slate-400 italic">Hoàn thành bài làm và bấm "Nộp bài & Thống kê" để xem phân tích chi tiết.</p>
+            </div>
+          </div>
+
+          <div class="border-t border-slate-100 pt-2.5 space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Lịch sử lượt làm (<span id="history-count">0</span>)</span>
+              <button onclick="clearHistory()" class="text-[11px] text-rose-600 hover:underline cursor-pointer">Xóa lịch sử</button>
+            </div>
+            <div id="history-list" class="max-h-48 overflow-y-auto space-y-1.5 text-xs"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <script>
     const wrap = document.getElementById('canvas-wrap');
@@ -584,7 +699,6 @@
           `;
         }
       } else {
-        // MODEL 2: Lăng trụ đứng tam giác đều ABC.A'B'C' (góc nhìn chuẩn SGK)
         const A = new THREE.Vector3(-0.75, 0, -1.05);
         const B = new THREE.Vector3(-1.15, 0, 0.95);
         const C = new THREE.Vector3(1.25, 0, 0.15);
@@ -593,11 +707,9 @@
         const C1 = C.clone().add(new THREE.Vector3(0, h, 0));
         const M = B.clone().add(C).multiplyScalar(0.5);
 
-        // Cạnh khuất: AC (nét đứt xám) và đường cao AA' (nét đứt đỏ)
         addSegment(A, C, 0x94a3b8, true);
         addSegment(A, A1, 0xdc2626, true);
 
-        // Các cạnh thấy (nét liền)
         addSegment(A, B, 0x1e293b, true);
         addSegment(B, C, 0x1e293b, false);
         addSegment(A1, B1, 0x1e293b, false);
@@ -605,6 +717,7 @@
         addSegment(C1, A1, 0x1e293b, false);
         addSegment(B, B1, 0x1e293b, false);
         addSegment(C, C1, 0x1e293b, false);
+
         const offsets2 = {
           A: new THREE.Vector3(-0.2, -0.14, -0.1),
           B: new THREE.Vector3(0, -0.2, 0.16),
@@ -693,16 +806,41 @@
       }
     }
 
-    function selectModel(idx) {
-      currentModel = idx;
-      currentStep = 0;
+    function updateNavButtons(activeIndex) {
       for (let i = 0; i < 3; i++) {
         const btn = document.getElementById(`m-btn-${i}`);
-        btn.className = i === idx
+        btn.className = i === activeIndex
           ? 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-blue-600 text-white shadow-sm cursor-pointer transition'
           : 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 cursor-pointer transition';
       }
+      const pBtn = document.getElementById('m-btn-3');
+      pBtn.className = activeIndex === 3
+        ? 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-emerald-600 text-white shadow-sm cursor-pointer transition flex items-center gap-1'
+        : 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-emerald-700 hover:bg-emerald-50 cursor-pointer transition flex items-center gap-1';
+    }
+
+    function selectModel(idx, targetStep = 0) {
+      document.getElementById('view-3d').classList.remove('hidden');
+      document.getElementById('view-practice').classList.add('hidden');
+      currentModel = idx;
+      currentStep = targetStep;
+      updateNavButtons(idx);
       buildScene();
+      setTimeout(() => {
+        if (wrap.clientWidth && wrap.clientHeight) {
+          camera.aspect = wrap.clientWidth / wrap.clientHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+        }
+      }, 30);
+    }
+
+    function openPracticeTab() {
+      document.getElementById('view-3d').classList.add('hidden');
+      document.getElementById('view-practice').classList.remove('hidden');
+      updateNavButtons(3);
+      renderQuiz();
+      renderHistory();
     }
 
     function onHeightChange() {
@@ -763,8 +901,503 @@
       renderer.setSize(wrap.clientWidth, wrap.clientHeight);
     });
 
+    // ==================== MODULE LUYỆN TẬP & PARSER EX_TEST ====================
+    const DEFAULT_TEX = `
+% Mức 1
+\\begin{ex}%[Mức 1]
+Cho hình chóp $S.ABCD$ có đáy $ABCD$ là hình vuông cạnh $a$, cạnh bên $SA \\perp (ABCD)$ và $SA = a$. Khẳng định nào sau đây đúng?
+\\choice
+{\\True $BC \\perp (SAB)$}
+{$CD \\perp (SAB)$}
+{$BD \\perp (SAB)$}
+{$AC \\perp (SBD)$}
+\\loigiai{Ta có $BC \\perp AB$ và $BC \\perp SA$ nên $BC \\perp (SAB)$.}
+\\end{ex}
+
+\\begin{ex}%[Mức 1]
+Trong hình chóp $S.ABCD$ với $SA \\perp (ABCD)$, hình chiếu vuông góc của đường thẳng $SC$ lên mặt phẳng $(ABCD)$ là
+\\choice
+{$AB$}
+{\\True $AC$}
+{$AD$}
+{$SA$}
+\\loigiai{Vì $SA \\perp (ABCD)$ nên $A$ là hình chiếu của $S$ lên $(ABCD)$, suy ra hình chiếu của $SC$ là $AC$.}
+\\end{ex}
+
+\\begin{ex}%[Mức 1]
+Cho hình chóp tứ giác đều $S.ABCD$ có tâm đáy là $O$. Đường thẳng nào sau đây vuông góc với mặt phẳng $(ABCD)$?
+\\choice
+{$SA$}
+{\\True $SO$}
+{$AC$}
+{$BD$}
+\\loigiai{Đường cao hình chóp tứ giác đều nối đỉnh $S$ với tâm đáy $O$ nên $SO \\perp (ABCD)$.}
+\\end{ex}
+
+% Mức 2
+\\begin{ex}%[Mức 2]
+Cho hình chóp $S.ABCD$ có đáy $ABCD$ là hình vuông cạnh $a$, cạnh bên $SA \\perp (ABCD)$ và $SA = a\\sqrt{3}$. Số đo góc phẳng nhị diện $[S, BC, A]$ bằng
+\\choice
+{$30^\\circ$}
+{$45^\\circ$}
+{\\True $60^\\circ$}
+{$90^\\circ$}
+\\loigiai{Giao tuyến là $BC$, có $BC \\perp (SAB)$ nên góc phẳng nhị diện $[S, BC, A] = \\widehat{SBA}$. Ta có $\\tan \\widehat{SBA} = \\dfrac{SA}{AB} = \\sqrt{3} \\Rightarrow \\widehat{SBA} = 60^\\circ$.}
+\\end{ex}
+
+\\begin{ex}%[Mức 2]
+Cho hình chóp $S.ABCD$ có đáy $ABCD$ là hình vuông cạnh $a$, $SA \\perp (ABCD)$ và $SA = a\\sqrt{3}$. Khoảng cách từ điểm $A$ đến mặt phẳng $(SBC)$ bằng
+\\choice
+{$\\dfrac{a}{2}$}
+{$\\dfrac{a\\sqrt{2}}{2}$}
+{\\True $\\dfrac{a\\sqrt{3}}{2}$}
+{$a$}
+\\loigiai{Kẻ $AH \\perp SB$ tại $H$, suy ra $AH \\perp (SBC)$. Khi đó $d(A,(SBC)) = AH = \\dfrac{SA \\cdot AB}{\\sqrt{SA^2 + AB^2}} = \\dfrac{a\\sqrt{3}}{2}$.}
+\\end{ex}
+
+\\begin{ex}%[Mức 2]
+Cho hình chóp tứ giác đều $S.ABCD$ có cạnh đáy bằng $a$ và chiều cao $SO = a$. Khoảng cách từ tâm đáy $O$ đến mặt phẳng $(SBC)$ bằng
+\\choice
+{$\\dfrac{a}{2}$}
+{\\True $\\dfrac{a\\sqrt{5}}{5}$}
+{$\\dfrac{a\\sqrt{2}}{2}$}
+{$\\dfrac{a\\sqrt{3}}{3}$}
+\\loigiai{Gọi $M$ là trung điểm $BC \\Rightarrow OM = \\dfrac{a}{2}$. Kẻ $OK \\perp SM \\Rightarrow d(O,(SBC)) = OK = \\dfrac{SO \\cdot OM}{\\sqrt{SO^2 + OM^2}} = \\dfrac{a\\sqrt{5}}{5}$.}
+\\end{ex}
+
+\\begin{ex}%[Mức 2]
+Cho lăng trụ đứng $ABC.A'B'C'$ có đáy $ABC$ là tam giác đều cạnh $a$, cạnh bên $AA' = \\dfrac{3a}{2}$. Số đo góc phẳng nhị diện $[A', BC, A]$ bằng
+\\choice
+{$30^\\circ$}
+{$45^\\circ$}
+{\\True $60^\\circ$}
+{$75^\\circ$}
+\\loigiai{Gọi $M$ là trung điểm $BC \\Rightarrow AM = \\dfrac{a\\sqrt{3}}{2}$. Góc nhị diện $[A', BC, A] = \\widehat{A'MA}$ có $\\tan \\widehat{A'MA} = \\dfrac{AA'}{AM} = \\sqrt{3} \\Rightarrow \\widehat{A'MA} = 60^\\circ$.}
+\\end{ex}
+
+% Mức 3
+\\begin{ex}%[Mức 3]
+Cho hình chóp $S.ABCD$ có đáy $ABCD$ là hình vuông cạnh $a$, cạnh bên $SA \\perp (ABCD)$ và $SA = a\\sqrt{2}$. Xét tính đúng -- sai của các mệnh đề sau:
+\\choiceTF
+{\\True $BD \\perp (SAC)$}
+{\\True Góc giữa đường thẳng $SC$ và mặt phẳng $(ABCD)$ bằng $45^\\circ$}
+{Khoảng cách từ điểm $A$ đến mặt phẳng $(SBC)$ bằng $\\dfrac{a\\sqrt{3}}{3}$}
+{Khoảng cách giữa hai đường thẳng chéo nhau $BD$ và $SC$ bằng $\\dfrac{a\\sqrt{6}}{6}$}
+\\loigiai{a) Đúng vì $BD \\perp AC$ và $BD \\perp SA$. b) Đúng vì $AC = SA = a\\sqrt{2}$. c) Sai vì $d(A,(SBC)) = \\dfrac{a\\sqrt{6}}{3}$. d) Sai vì $d(BD, SC) = OH = \\dfrac{a}{2}$.}
+\\end{ex}
+
+\\begin{ex}%[Mức 3]
+Cho lăng trụ đứng $ABC.A'B'C'$ có đáy $ABC$ là tam giác đều cạnh $a$, cạnh bên $AA' = a\\sqrt{3}$. Gọi $M$ là trung điểm của $BC$. Xét tính đúng -- sai của các mệnh đề sau:
+\\choiceTF
+{\\True $BC \\perp (AA'M)$}
+{\\True Số đo góc giữa đường thẳng $A'B$ và mặt phẳng $(ABC)$ bằng $60^\\circ$}
+{Số đo góc phẳng nhị diện $[A', BC, A]$ bằng $45^\\circ$}
+{\\True Khoảng cách từ điểm $A'$ đến đường thẳng $BC$ bằng $\\dfrac{a\\sqrt{15}}{2}$}
+\\loigiai{a) Đúng. b) Đúng vì $\\tan \\widehat{A'BA} = \\sqrt{3}$. c) Sai vì $\\tan \\widehat{A'MA} = 2$. d) Đúng vì $A'M = \\sqrt{AA'^2 + AM^2} = \\dfrac{a\\sqrt{15}}{2}$.}
+\\end{ex}
+`;
+
+    let questions = [];
+    let userAnswers = {};
+    let isSubmitted = false;
+
+    function extractBalancedBraces(str, startIdx) {
+      if (str[startIdx] !== '{') return null;
+      let depth = 0;
+      for (let i = startIdx; i < str.length; i++) {
+        if (str[i] === '{') depth++;
+        else if (str[i] === '}') {
+          depth--;
+          if (depth === 0) {
+            return { content: str.slice(startIdx + 1, i), nextIdx: i + 1 };
+          }
+        }
+      }
+      return null;
+    }
+
+    function inferModelHint(text) {
+      if (/lăng trụ|A'B'C'/i.test(text)) return { model: 2, step: 2, label: 'Mô hình 3: Lăng trụ đứng' };
+      if (/chóp tứ giác đều|tâm đáy.*O/i.test(text)) return { model: 1, step: 2, label: 'Mô hình 2: Chóp tứ giác đều' };
+      return { model: 0, step: 2, label: 'Mô hình 1: Chóp SA ⊥ (ABCD)' };
+    }
+
+    function parseExTest(tex) {
+      const blocks = tex.match(/\\begin\{ex\}[\s\S]*?\\end\{ex\}/g) || [];
+      return blocks.map((block, idx) => {
+        let level = 'Mức 1';
+        if (/Mức 3|choiceTF/i.test(block)) level = 'Mức 3';
+        else if (/Mức 2/i.test(block)) level = 'Mức 2';
+
+        let body = block.replace(/^\\begin\{ex\}(\[[^\]]*\])?(%[^\n]*)?/, '').replace(/\\end\{ex\}$/, '').trim();
+
+        let solution = '';
+        const solIdx = body.indexOf('\\loigiai');
+        if (solIdx !== -1) {
+          const bracePos = body.indexOf('{', solIdx);
+          if (bracePos !== -1) {
+            const parsedSol = extractBalancedBraces(body, bracePos);
+            if (parsedSol) {
+              solution = parsedSol.content.trim();
+              body = body.slice(0, solIdx) + body.slice(parsedSol.nextIdx);
+            }
+          }
+        }
+
+        const isTF = body.includes('\\choiceTF');
+        const cmd = isTF ? '\\choiceTF' : '\\choice';
+        const cmdIdx = body.indexOf(cmd);
+        let stem = body;
+        const options = [];
+        const correctFlags = [];
+
+        if (cmdIdx !== -1) {
+          stem = body.slice(0, cmdIdx).trim();
+          let cursor = cmdIdx + cmd.length;
+          while (cursor < body.length && options.length < 4) {
+            while (cursor < body.length && /\s/.test(body[cursor])) cursor++;
+            if (body[cursor] === '{') {
+              const res = extractBalancedBraces(body, cursor);
+              if (!res) break;
+              let optText = res.content.trim();
+              const isTrue = /\\True\b/.test(optText);
+              optText = optText.replace(/\\True\b/g, '').trim();
+              options.push(optText);
+              correctFlags.push(isTrue);
+              cursor = res.nextIdx;
+            } else {
+              break;
+            }
+          }
+        }
+
+        stem = stem
+          .replace(/\\textbf\{([^}]*)\}/g, '<strong>$1</strong>')
+          .replace(/\\textit\{([^}]*)\}/g, '<em>$1</em>')
+          .replace(/\\includegraphics(\[[^\]]*\])?\{([^}]*)\}/g, '<div class="text-xs text-blue-600 italic my-1">[Hình minh họa: $2 — Bấm "Đính kèm ảnh" bên dưới để tải ảnh lên]</div>');
+
+        return {
+          id: idx + 1,
+          level,
+          type: isTF ? 'tf' : 'mcq',
+          stem,
+          options,
+          correctFlags,
+          solution: solution.replace(/\\textbf\{([^}]*)\}/g, '<strong>$1</strong>').replace(/\\\\/g, '<br/>'),
+          imageData: null,
+          hint: inferModelHint(stem)
+        };
+      });
+    }
+
+    function loadDefaultQuestions() {
+      questions = parseExTest(DEFAULT_TEX);
+      userAnswers = {};
+      isSubmitted = false;
+      renderQuiz();
+    }
+
+    function toggleTexModal() {
+      document.getElementById('tex-paste-box').classList.toggle('hidden');
+    }
+
+    function handleTexUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const parsed = parseExTest(e.target.result);
+        if (parsed.length === 0) {
+          alert('Không tìm thấy khối \\begin{ex}...\\end{ex} hợp lệ trong tệp!');
+          return;
+        }
+        questions = parsed;
+        userAnswers = {};
+        isSubmitted = false;
+        renderQuiz();
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    function parsePastedTex() {
+      const raw = document.getElementById('tex-raw-input').value;
+      const parsed = parseExTest(raw);
+      if (parsed.length === 0) {
+        alert('Không tìm thấy khối \\begin{ex}...\\end{ex} hợp lệ!');
+        return;
+      }
+      questions = parsed;
+      userAnswers = {};
+      isSubmitted = false;
+      document.getElementById('tex-paste-box').classList.add('hidden');
+      renderQuiz();
+    }
+
+    function attachQuestionImage(qId, event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const q = questions.find((item) => item.id === qId);
+        if (q) {
+          q.imageData = e.target.result;
+          renderQuiz();
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function selectMcqOption(qId, optIdx) {
+      if (isSubmitted) return;
+      userAnswers[qId] = optIdx;
+      renderQuiz();
+    }
+
+    function selectTfOption(qId, subIdx, val) {
+      if (isSubmitted) return;
+      if (!userAnswers[qId]) userAnswers[qId] = [null, null, null, null];
+      userAnswers[qId][subIdx] = val;
+      renderQuiz();
+    }
+
+    function renderQuiz() {
+      const container = document.getElementById('quiz-container');
+      const filter = document.getElementById('level-filter').value;
+      const filtered = filter === 'all' ? questions : questions.filter((q) => q.level === filter);
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="bg-white rounded-2xl border border-slate-200 p-6 text-center text-sm text-slate-500">Không có câu hỏi nào thuộc bộ lọc hiện tại.</div>`;
+        return;
+      }
+
+      const labels = ['A', 'B', 'C', 'D'];
+      const subLabels = ['a)', 'b)', 'c)', 'd)'];
+
+      container.innerHTML = filtered.map((q) => {
+        const levelBadgeClass = q.level === 'Mức 1'
+          ? 'bg-sky-100 text-sky-700'
+          : q.level === 'Mức 2'
+            ? 'bg-amber-100 text-amber-800'
+            : 'bg-purple-100 text-purple-700';
+
+        let optionsHtml = '';
+        if (q.type === 'mcq') {
+          const chosen = userAnswers[q.id];
+          optionsHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">` + q.options.map((opt, idx) => {
+            let cls = 'border-slate-200 hover:border-blue-400 hover:bg-blue-50/40 text-slate-800';
+            if (isSubmitted) {
+              if (q.correctFlags[idx]) cls = 'border-emerald-500 bg-emerald-50 text-emerald-900 font-semibold';
+              else if (chosen === idx) cls = 'border-rose-500 bg-rose-50 text-rose-900';
+            } else if (chosen === idx) {
+              cls = 'border-blue-600 bg-blue-50 text-blue-900 font-semibold';
+            }
+            return `
+              <button onclick="selectMcqOption(${q.id}, ${idx})" class="text-left p-2.5 rounded-xl border text-xs sm:text-sm transition cursor-pointer flex items-start gap-2 ${cls}">
+                <span class="font-bold">${labels[idx]}.</span>
+                <span>${opt}</span>
+              </button>
+            `;
+          }).join('') + `</div>`;
+        } else {
+          const ansArr = userAnswers[q.id] || [null, null, null, null];
+          optionsHtml = `<div class="space-y-2 pt-1">` + q.options.map((opt, idx) => {
+            const cur = ansArr[idx];
+            const isRight = isSubmitted && cur === q.correctFlags[idx];
+            const isWrong = isSubmitted && cur !== null && cur !== q.correctFlags[idx];
+            const rowBorder = isSubmitted
+              ? (isRight ? 'border-emerald-400 bg-emerald-50/50' : 'border-rose-300 bg-rose-50/40')
+              : 'border-slate-200 bg-slate-50/40';
+            return `
+              <div class="p-2.5 rounded-xl border ${rowBorder} flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs sm:text-sm">
+                <div><span class="font-bold text-slate-700 mr-1.5">${subLabels[idx]}</span>${opt}</div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button onclick="selectTfOption(${q.id}, ${idx}, true)" class="px-2.5 py-1 rounded-lg border text-xs font-bold cursor-pointer ${cur === true ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300'}">
+                    Đúng
+                  </button>
+                  <button onclick="selectTfOption(${q.id}, ${idx}, false)" class="px-2.5 py-1 rounded-lg border text-xs font-bold cursor-pointer ${cur === false ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300'}">
+                    Sai
+                  </button>
+                  ${isSubmitted ? `<span class="text-[11px] font-bold ml-1 ${q.correctFlags[idx] ? 'text-emerald-700' : 'text-rose-700'}">[ĐA: ${q.correctFlags[idx] ? 'Đ' : 'S'}]</span>` : ''}
+                </div>
+              </div>
+            `;
+          }).join('') + `</div>`;
+        }
+
+        return `
+          <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-2.5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-lg bg-slate-900 text-white text-xs font-bold">Câu ${q.id}</span>
+                <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${levelBadgeClass}">${q.level}</span>
+                <span class="text-[11px] text-slate-400">${q.type === 'tf' ? 'Đúng/Sai 4 ý' : 'Trắc nghiệm 4 lựa chọn'}</span>
+              </div>
+
+              <div class="flex items-center gap-1.5">
+                <label class="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-semibold text-slate-600 cursor-pointer">
+                  + Đính kèm ảnh
+                  <input type="file" accept="image/*" onchange="attachQuestionImage(${q.id}, event)" class="hidden" />
+                </label>
+                <button onclick="selectModel(${q.hint.model}, ${q.hint.step})" class="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-semibold cursor-pointer">
+                  Xem gợi ý 3D
+                </button>
+              </div>
+            </div>
+
+            <div class="text-xs sm:text-sm text-slate-900 leading-relaxed">${q.stem}</div>
+            ${q.imageData ? `<div class="pt-1"><img src="${q.imageData}" alt="Hình minh họa câu ${q.id}" class="max-h-56 rounded-xl border border-slate-200 mx-auto" /></div>` : ''}
+            ${optionsHtml}
+            ${isSubmitted && q.solution ? `
+              <div class="mt-2 p-2.5 rounded-xl bg-amber-50/80 border border-amber-200 text-xs text-slate-800 leading-relaxed">
+                <strong class="text-amber-900">Hướng dẫn giải:</strong> ${q.solution}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        MathJax.typesetPromise([container]).catch(() => {});
+      }
+    }
+
+    function submitQuiz() {
+      if (questions.length === 0) return;
+      isSubmitted = true;
+
+      let totalEarned = 0;
+      let fullCorrectCount = 0;
+      const levelStats = {
+        'Mức 1': { earned: 0, total: 0 },
+        'Mức 2': { earned: 0, total: 0 },
+        'Mức 3': { earned: 0, total: 0 }
+      };
+
+      questions.forEach((q) => {
+        levelStats[q.level].total += 1;
+        let qScore = 0;
+        if (q.type === 'mcq') {
+          const chosen = userAnswers[q.id];
+          if (chosen !== undefined && q.correctFlags[chosen]) {
+            qScore = 1;
+            fullCorrectCount += 1;
+          }
+        } else {
+          const arr = userAnswers[q.id] || [null, null, null, null];
+          let rightSub = 0;
+          for (let i = 0; i < 4; i++) {
+            if (arr[i] === q.correctFlags[i]) rightSub++;
+          }
+          if (rightSub === 1) qScore = 0.1;
+          else if (rightSub === 2) qScore = 0.25;
+          else if (rightSub === 3) qScore = 0.5;
+          else if (rightSub === 4) {
+            qScore = 1.0;
+            fullCorrectCount += 1;
+          }
+        }
+        totalEarned += qScore;
+        levelStats[q.level].earned += qScore;
+      });
+
+      const score10 = ((totalEarned / questions.length) * 10).toFixed(2);
+      const rate = Math.round((totalEarned / questions.length) * 100);
+
+      document.getElementById('stat-score').textContent = `${score10} / 10`;
+      document.getElementById('stat-correct').textContent = `${fullCorrectCount} / ${questions.length}`;
+      document.getElementById('stat-rate').textContent = `${rate}%`;
+
+      const breakdownEl = document.getElementById('level-breakdown');
+      breakdownEl.innerHTML = Object.entries(levelStats)
+        .filter(([, st]) => st.total > 0)
+        .map(([lvl, st]) => {
+          const pct = Math.round((st.earned / st.total) * 100);
+          return `
+            <div class="space-y-1">
+              <div class="flex justify-between font-medium">
+                <span>${lvl}</span>
+                <span>${st.earned.toFixed(2)} / ${st.total} điểm (${pct}%)</span>
+              </div>
+              <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-blue-600 rounded-full" style="width: ${pct}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+      const stuName = document.getElementById('stu-name').value.trim() || 'Học sinh ẩn danh';
+      const stuClass = document.getElementById('stu-class').value.trim() || '11A1';
+      const history = JSON.parse(localStorage.getItem('toan11_3d_history') || '[]');
+      history.unshift({
+        time: new Date().toLocaleString('vi-VN'),
+        name: stuName,
+        cls: stuClass,
+        score: score10,
+        correct: `${fullCorrectCount}/${questions.length}`,
+        rate: `${rate}%`
+      });
+      localStorage.setItem('toan11_3d_history', JSON.stringify(history));
+      renderHistory();
+      renderQuiz();
+    }
+
+    function resetQuiz() {
+      userAnswers = {};
+      isSubmitted = false;
+      document.getElementById('stat-score').textContent = '-- / 10';
+      document.getElementById('stat-correct').textContent = `0 / ${questions.length}`;
+      document.getElementById('stat-rate').textContent = '0%';
+      renderQuiz();
+    }
+
+    function renderHistory() {
+      const history = JSON.parse(localStorage.getItem('toan11_3d_history') || '[]');
+      document.getElementById('history-count').textContent = history.length;
+      const listEl = document.getElementById('history-list');
+      if (history.length === 0) {
+        listEl.innerHTML = `<div class="text-slate-400 italic">Chưa có dữ liệu nộp bài.</div>`;
+        return;
+      }
+      listEl.innerHTML = history.map((item) => `
+        <div class="p-2 rounded-lg bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+          <div>
+            <div class="font-bold text-slate-800">${item.name} (${item.cls})</div>
+            <div class="text-[10px] text-slate-400">${item.time}</div>
+          </div>
+          <div class="text-right">
+            <div class="font-extrabold text-emerald-700">${item.score} đ</div>
+            <div class="text-[10px] text-slate-500">Đạt ${item.correct} (${item.rate})</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function clearHistory() {
+      localStorage.removeItem('toan11_3d_history');
+      renderHistory();
+    }
+
+    function exportStatsCSV() {
+      const history = JSON.parse(localStorage.getItem('toan11_3d_history') || '[]');
+      if (history.length === 0) {
+        alert('Chưa có lượt làm bài nào để xuất thống kê!');
+        return;
+      }
+      const rows = [
+        ['Thời gian', 'Họ tên học sinh', 'Lớp', 'Điểm hệ 10', 'Số câu đúng trọn vẹn', 'Tỷ lệ hoàn thành'],
+        ...history.map((h) => [h.time, h.name, h.cls, h.score, h.correct, h.rate])
+      ];
+      const csvContent = '\uFEFF' + rows.map((r) => r.map((v) => `"${v}"`).join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'Thong_ke_luyen_tap_Toan11_3D.csv';
+      link.click();
+    }
+
     setCameraView('default');
     buildScene();
+    loadDefaultQuestions();
     animate();
   </script>
 </body>
