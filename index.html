@@ -1076,10 +1076,10 @@ Cho lăng trụ đứng $ABC.A'B'C'$ có đáy $ABC$ là tam giác đều cạnh
           .replace(/\\textit\{([^}]*)\}/g, '<em>$1</em>')
           .replace(/\\includegraphics(\[[^\]]*\])?\{([^}]*)\}/g, '<div class="text-xs text-blue-600 italic my-1">[Hình minh họa: $2 — Bấm "Đính kèm ảnh" bên dưới để tải ảnh lên]</div>');
 	stem = stem
- 	 .replace(/\r?\n+/g, ' ')
-  	 .replace(/\s+([.,:;?!])/g, '$1')
-  	 .replace(/\s{2,}/g, ' ')
-  	 .trim();
+  	  .replace(/[\r\n]+/g, ' ')
+  	  .replace(/\s*([.,:;?!])\s*/g, '$1 ')
+  	  .replace(/\s+/g, ' ')
+  	  .trim();
         return {
           id: idx + 1,
           level,
