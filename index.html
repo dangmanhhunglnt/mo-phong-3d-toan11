@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mô Phỏng 3D Toán 11 — Quan Hệ Vuông Góc Trong Không Gian</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+      margin: 0;
+    }
+    .canvas-wrap {
+      position: relative;
+      width: 100%;
+      height: clamp(330px, 46vh, 420px);
+      background: radial-gradient(circle at center, #ffffff 0%, #f1f5f9 100%);
+      border-radius: 0.85rem;
+      overflow: hidden;
+    }
+    .vertex-label {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      font-weight: 700;
+      font-size: 12px;
+      padding: 1px 6px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid rgba(148, 163, 184, 0.55);
+      color: #0f172a;
+      pointer-events: none;
+      user-select: none;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      z-index: 10;
+    }
+    .vertex-label.highlight {
+      background: #fef2f2;
+      border-color: #ef4444;
+      color: #b91c1c;
+    }
+    .math-expr {
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-style: italic;
+    }
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      vertical-align: middle;
+      line-height: 1.05;
+      font-size: 0.88em;
+      margin: 0 2px;
+    }
+    .frac-num {
+      border-bottom: 1px solid currentColor;
+      padding: 0 2px 1px 2px;
+    }
+    .frac-den {
+      padding: 1px 2px 0 2px;
+    }
+    input[type="range"] {
+      accent-color: #2563eb;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700">
+            Toán 11 &bull; GDPT 2018
+          </span>
+          <span class="text-xs font-medium text-slate-500">Trường THPT Lý Nhân Tông &mdash; Bắc Ninh</span>
+        </div>
+        <h1 class="text-base sm:text-lg font-bold text-slate-900">
+          Mô Hình Tương Tác 3D: Quan Hệ Vuông Góc Trong Không Gian
+        </h1>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl">
+        <button id="m-btn-0" onclick="selectModel(0)" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-blue-600 text-white shadow-sm cursor-pointer transition">
+          1. Chóp <span class="math-expr">SA &perp; (ABCD)</span>
+        </button>
+        <button id="m-btn-1" onclick="selectModel(1)" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 cursor-pointer transition">
+          2. Chóp tứ giác đều
+        </button>
+        <button id="m-btn-2" onclick="selectModel(2)" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 cursor-pointer transition">
+          3. Lăng trụ đứng
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-3.5 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+    <!-- LEFT COLUMN: 3D STAGE -->
+    <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-3 shadow-sm">
+      <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100 text-xs">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="inline-flex items-center gap-1.5 font-medium text-slate-700">
+            <span class="w-4 h-0.5 bg-slate-800 inline-block"></span> Cạnh thấy
+          </span>
+          <span class="inline-flex items-center gap-1.5 font-medium text-slate-500">
+            <span class="w-4 h-0.5 border-t-2 border-dashed border-slate-400 inline-block"></span> Cạnh khuất
+          </span>
+          <span class="inline-flex items-center gap-1.5 font-medium text-rose-600">
+            <span class="w-4 h-0.5 bg-rose-600 inline-block"></span> Đường cao / Khoảng cách
+          </span>
+          <span class="inline-flex items-center gap-1.5 font-medium text-amber-600">
+            <span class="w-3 h-3 rounded-sm bg-amber-400/50 border border-amber-500 inline-block"></span> Góc / Mặt phẳng
+          </span>
+        </div>
+        <span class="text-[11px] text-slate-400">Kéo xoay 360&deg; &bull; Cuộn thu phóng</span>
+      </div>
+
+      <div id="canvas-wrap" class="canvas-wrap my-2 border border-slate-200/80">
+        <div id="labels-layer" class="absolute inset-0 pointer-events-none"></div>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-1.5 pt-1.5 border-t border-slate-100">
+        <div class="flex flex-wrap items-center gap-1.5">
+          <button onclick="setCameraView('default')" class="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold cursor-pointer">
+            3D mặc định
+          </button>
+          <button onclick="setCameraView('top')" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer">
+            Nhìn từ trên (Đáy)
+          </button>
+          <button onclick="setCameraView('side')" class="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-semibold cursor-pointer">
+            Nhìn ngang (Đường cao)
+          </button>
+          <button onclick="setCameraView('front')" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer">
+            Đối diện mặt bên
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="btn-autorotate" onclick="toggleAutoRotate()" class="px-2.5 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-xs font-semibold text-slate-700 cursor-pointer">
+            Tự xoay: Tắt
+          </button>
+          <label class="inline-flex items-center gap-1 text-xs font-medium text-slate-700 cursor-pointer">
+            <input id="chk-labels" type="checkbox" checked onchange="toggleLabels()" class="accent-blue-600" />
+            Tên đỉnh
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: PARAMETERS & STEP-BY-STEP GUIDE -->
+    <div class="lg:col-span-5 flex flex-col gap-3">
+      <div class="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-sm space-y-2.5">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">Điều chỉnh chiều cao <span class="math-expr">h</span></h2>
+          <span id="height-badge" class="px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-700 font-bold text-xs">
+            <span class="math-expr">h = a&radic;3 &approx; 1,73a</span>
+          </span>
+        </div>
+
+        <input id="height-slider" type="range" min="1.0" max="2.6" step="0.05" value="1.73" oninput="onHeightChange()" class="w-full cursor-pointer" />
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="setHeightPreset(1.0)" class="py-1 px-2 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50 text-xs font-semibold text-slate-700 cursor-pointer">
+            <span class="math-expr">h = a</span>
+          </button>
+          <button onclick="setHeightPreset(1.414)" class="py-1 px-2 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50 text-xs font-semibold text-slate-700 cursor-pointer">
+            <span class="math-expr">h = a&radic;2</span>
+          </button>
+          <button onclick="setHeightPreset(1.732)" class="py-1 px-2 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50 text-xs font-semibold text-slate-700 cursor-pointer">
+            <span class="math-expr">h = a&radic;3</span>
+          </button>
+        </div>
+
+        <div id="metrics-grid" class="grid grid-cols-3 gap-2 pt-0.5"></div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-sm flex flex-col justify-between space-y-2.5">
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <span id="step-badge" class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
+              Bước 1 / 4
+            </span>
+            <div class="flex items-center gap-1.5">
+              <button onclick="prevStep()" class="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 cursor-pointer">
+                &larr; Trước
+              </button>
+              <button onclick="nextStep()" class="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold cursor-pointer">
+                Bước tiếp &rarr;
+              </button>
+            </div>
+          </div>
+
+          <h3 id="step-title" class="text-sm sm:text-base font-bold text-slate-900"></h3>
+          <div id="step-problem" class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs sm:text-sm text-slate-700 leading-snug"></div>
+          <div id="step-explanation" class="text-xs sm:text-sm text-slate-800 leading-snug space-y-1.5"></div>
+        </div>
+
+        <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <button onclick="goStep(0)" id="dot-0" class="w-6 h-6 rounded-lg text-xs font-bold bg-blue-600 text-white cursor-pointer">1</button>
+            <button onclick="goStep(1)" id="dot-1" class="w-6 h-6 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 cursor-pointer">2</button>
+            <button onclick="goStep(2)" id="dot-2" class="w-6 h-6 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 cursor-pointer">3</button>
+            <button onclick="goStep(3)" id="dot-3" class="w-6 h-6 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 cursor-pointer">4</button>
+          </div>
+          <span class="text-[11px] text-slate-400">Quy trình 4 bước</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const wrap = document.getElementById('canvas-wrap');
+    const labelsLayer = document.getElementById('labels-layer');
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(42, wrap.clientWidth / wrap.clientHeight, 0.1, 100);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    wrap.insertBefore(renderer.domElement, labelsLayer);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
+    controls.target.set(0, 1.05, 0);
+
+    const gridHelper = new THREE.GridHelper(10, 10, 0xcbd5e1, 0xe2e8f0);
+    gridHelper.position.y = -0.01;
+    scene.add(gridHelper);
+
+    const dynamicGroup = new THREE.Group();
+    scene.add(dynamicGroup);
+
+    let currentModel = 0;
+    let currentStep = 0;
+    let paramH = 1.732;
+    let showLabels = true;
+    let labelElements = [];
+
+    function fracHtml(num, den) {
+      return `<span class="frac"><span class="frac-num">${num}</span><span class="frac-den">${den}</span></span>`;
+    }
+
+    function setCameraView(mode) {
+      controls.target.set(0, 1.05, 0);
+      if (mode === 'default') {
+        camera.position.set(4.6, 3.3, 5.2);
+      } else if (mode === 'top') {
+        camera.position.set(0.01, 7.2, 0.01);
+        controls.target.set(0, 0, 0);
+      } else if (mode === 'side') {
+        camera.position.set(7.2, 1.35, -0.4);
+      } else if (mode === 'front') {
+        camera.position.set(6.8, 1.8, 1.5);
+      }
+      controls.update();
+    }
+
+    function toggleAutoRotate() {
+      controls.autoRotate = !controls.autoRotate;
+      controls.autoRotateSpeed = 1.8;
+      document.getElementById('btn-autorotate').textContent = `Tự xoay: ${controls.autoRotate ? 'Bật' : 'Tắt'}`;
+    }
+
+    function toggleLabels() {
+      showLabels = document.getElementById('chk-labels').checked;
+      labelsLayer.style.display = showLabels ? 'block' : 'none';
+    }
+
+    function addSegment(p1, p2, colorHex, dashed = false) {
+      const geom = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+      const mat = dashed
+        ? new THREE.LineDashedMaterial({ color: colorHex, dashSize: 0.14, gapSize: 0.09 })
+        : new THREE.LineBasicMaterial({ color: colorHex });
+      const line = new THREE.Line(geom, mat);
+      if (dashed) line.computeLineDistances();
+      dynamicGroup.add(line);
+      return line;
+    }
+
+    function addPoint(pos, colorHex = 0x0f172a, radius = 0.055) {
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(radius, 16, 16),
+        new THREE.MeshBasicMaterial({ color: colorHex })
+      );
+      mesh.position.copy(pos);
+      dynamicGroup.add(mesh);
+      return mesh;
+    }
+
+    function addPolygon(points, colorHex, opacity = 0.24) {
+      if (points.length < 3) return;
+      const vertices = [];
+      for (let i = 1; i < points.length - 1; i++) {
+        vertices.push(
+          points[0].x, points[0].y, points[0].z,
+          points[i].x, points[i].y, points[i].z,
+          points[i + 1].x, points[i + 1].y, points[i + 1].z
+        );
+      }
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      const mat = new THREE.MeshBasicMaterial({
+        color: colorHex,
+        transparent: true,
+        opacity: opacity,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      });
+      const mesh = new THREE.Mesh(geom, mat);
+      dynamicGroup.add(mesh);
+      return mesh;
+    }
+
+    function addRightAngleMark(vertex, dir1, dir2, size = 0.22, colorHex = 0xdc2626) {
+      const u = dir1.clone().normalize().multiplyScalar(size);
+      const v = dir2.clone().normalize().multiplyScalar(size);
+      const p1 = vertex.clone().add(u);
+      const p2 = vertex.clone().add(u).add(v);
+      const p3 = vertex.clone().add(v);
+      addSegment(p1, p2, colorHex, false);
+      addSegment(p2, p3, colorHex, false);
+    }
+
+    function addAngleSector(vertex, dir1, dir2, radius = 0.55, colorHex = 0xf59e0b) {
+      const u = dir1.clone().normalize();
+      const v = dir2.clone().normalize();
+      const angle = u.angleTo(v);
+      const normal = new THREE.Vector3().crossVectors(u, v).normalize();
+      const pts = [vertex.clone()];
+      const segs = 18;
+      for (let i = 0; i <= segs; i++) {
+        const theta = (angle * i) / segs;
+        const vec = u.clone().applyAxisAngle(normal, theta).multiplyScalar(radius);
+        pts.push(vertex.clone().add(vec));
+      }
+      addPolygon(pts, colorHex, 0.48);
+    }
+
+    function registerLabel(text, pos3d, highlight = false) {
+      const el = document.createElement('div');
+      el.className = 'vertex-label' + (highlight ? ' highlight' : '');
+      el.textContent = text;
+      labelsLayer.appendChild(el);
+      labelElements.push({ el, pos3d });
+    }
+
+    async function fetchPythonMetrics(modelId, hVal) {
+      try {
+        const res = await fetch(`/api/metrics?model=${modelId}&h=${hVal}`);
+        if (res.ok) return await res.json();
+      } catch (e) {}
+      return null;
+    }
+
+    async function buildScene() {
+      while (dynamicGroup.children.length > 0) {
+        dynamicGroup.remove(dynamicGroup.children[0]);
+      }
+      labelsLayer.innerHTML = '';
+      labelElements = [];
+
+      const a = 2.4;
+      const h = paramH * (a / 1.4);
+
+      const metricsEl = document.getElementById('metrics-grid');
+      const stepBadge = document.getElementById('step-badge');
+      const stepTitle = document.getElementById('step-title');
+      const stepProblem = document.getElementById('step-problem');
+      const stepExp = document.getElementById('step-explanation');
+
+      stepBadge.textContent = `Bước ${currentStep + 1} / 4`;
+      for (let i = 0; i < 4; i++) {
+        const d = document.getElementById(`dot-${i}`);
+        d.className = i === currentStep
+          ? 'w-6 h-6 rounded-lg text-xs font-bold bg-blue-600 text-white cursor-pointer'
+          : 'w-6 h-6 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 cursor-pointer';
+      }
+
+      if (currentModel === 0) {
+        const A = new THREE.Vector3(-1.2, 0, -1.2);
+        const B = new THREE.Vector3(-1.2, 0, 1.2);
+        const C = new THREE.Vector3(1.2, 0, 1.2);
+        const D = new THREE.Vector3(1.2, 0, -1.2);
+        const S = new THREE.Vector3(-1.2, h, -1.2);
+
+        addSegment(A, B, 0x94a3b8, true);
+        addSegment(A, D, 0x94a3b8, true);
+        addSegment(A, S, 0xdc2626, true);
+
+        addSegment(B, C, 0x1e293b, false);
+        addSegment(C, D, 0x1e293b, false);
+        addSegment(S, B, 0x1e293b, false);
+        addSegment(S, C, 0x1e293b, false);
+        addSegment(S, D, 0x1e293b, false);
+
+        addRightAngleMark(A, new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1), 0.22, 0xdc2626);
+        addRightAngleMark(A, new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 0, 0), 0.22, 0xdc2626);
+
+        const offsets0 = {
+          S: new THREE.Vector3(0, 0.24, 0),
+          A: new THREE.Vector3(-0.22, 0.08, -0.14),
+          B: new THREE.Vector3(-0.18, -0.16, 0.14),
+          C: new THREE.Vector3(0.14, -0.2, 0.14),
+          D: new THREE.Vector3(0.2, -0.14, -0.12)
+        };
+        ['S', 'A', 'B', 'C', 'D'].forEach((name) => {
+          const map = { S, A, B, C, D };
+          addPoint(map[name], name === 'S' || name === 'A' ? 0xdc2626 : 0x0f172a);
+          registerLabel(name, map[name].clone().add(offsets0[name]), name === 'S' || name === 'A');
+        });
+
+        const alphaDeg = (Math.atan(paramH / Math.SQRT2) * 180) / Math.PI;
+        const dihedralDeg = (Math.atan(paramH) * 180) / Math.PI;
+        const distRatio = paramH / Math.sqrt(paramH * paramH + 1);
+
+        const pyData = await fetchPythonMetrics(0, paramH);
+        const v0 = pyData ? pyData.values[0] : `${alphaDeg.toFixed(1).replace('.', ',')}&deg;`;
+        const v1 = pyData ? pyData.values[1] : `${dihedralDeg.toFixed(1).replace('.', ',')}&deg;`;
+        const v2 = pyData ? pyData.values[2] : `${distRatio.toFixed(2).replace('.', ',')}a`;
+
+        metricsEl.innerHTML = `
+          <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center">
+            <div class="text-[11px] text-slate-500">Góc <span class="math-expr">(SC,(ABCD))</span></div>
+            <div class="text-sm font-bold text-blue-700">${v0}</div>
+          </div>
+          <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center">
+            <div class="text-[11px] text-slate-500">Nhị diện <span class="math-expr">[S,BC,A]</span></div>
+            <div class="text-sm font-bold text-amber-600">${v1}</div>
+          </div>
+          <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center">
+            <div class="text-[11px] text-slate-500"><span class="math-expr">d(A,(SBC))</span></div>
+            <div class="text-sm font-bold text-rose-600">${v2}</div>
+          </div>
+        `;
+
+        stepProblem.innerHTML = `<strong>Bài toán 1:</strong> Cho hình chóp <span class="math-expr">S.ABCD</span> có đáy <span class="math-expr">ABCD</span> là hình vuông cạnh <span class="math-expr">a</span>, cạnh bên <span class="math-expr">SA &perp; (ABCD)</span> và <span class="math-expr">SA = ${paramH.toFixed(2).replace('.', ',')}a</span>.`;
+
+        if (currentStep === 0) {
+          stepTitle.textContent = "Bước 1: Dựng khung hình cơ sở & đường cao SA";
+          stepExp.innerHTML = `
+            <p>&bull; Đáy <span class="math-expr">ABCD</span> là hình vuông; các cạnh khuất <span class="math-expr">AB, AD, SA</span> vẽ <strong>nét đứt</strong>.</p>
+            <p>&bull; Vì <span class="math-expr">SA &perp; (ABCD)</span> nên <span class="math-expr">SA &perp; AB</span> và <span class="math-expr">SA &perp; AD</span>. Bấm <em>"Nhìn ngang (Đường cao)"</em> để thấy <span class="math-expr">SA</span> thẳng đứng vuông góc với đáy.</p>
+          `;
+        } else if (currentStep === 1) {
+          addSegment(A, C, 0x2563eb, true);
+          addAngleSector(C, A.clone().sub(C), S.clone().sub(C), 0.65, 0xf59e0b);
+          addPolygon([S, A, C], 0x3b82f6, 0.16);
+          stepTitle.textContent = "Bước 2: Xác định góc giữa đường thẳng SC và đáy (ABCD)";
+          stepExp.innerHTML = `
+            <p>&bull; Hình chiếu vuông góc của <span class="math-expr">SC</span> lên <span class="math-expr">(ABCD)</span> là <span class="math-expr">AC</span>.</p>
+            <p>&bull; Góc <span class="math-expr">(SC, (ABCD)) = &ang;SCA</span> (màu vàng). Trong <span class="math-expr">&Delta;SAC</span> vuông tại <span class="math-expr">A</span>: <span class="math-expr">tan &ang;SCA =</span> ${fracHtml('SA', 'AC')} &rArr; <span class="math-expr">&ang;SCA &approx; ${alphaDeg.toFixed(1).replace('.', ',')}&deg;</span>.</p>
+          `;
+        } else if (currentStep === 2) {
+          addPolygon([S, B, C], 0x10b981, 0.22);
+          addAngleSector(B, A.clone().sub(B), S.clone().sub(B), 0.6, 0xf59e0b);
+          addRightAngleMark(B, new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, -1), 0.22, 0x059669);
+          stepTitle.textContent = "Bước 3: Xác định góc phẳng nhị diện [S, BC, A]";
+          stepExp.innerHTML = `
+            <p>&bull; Giao tuyến của <span class="math-expr">(SBC)</span> và <span class="math-expr">(ABCD)</span> là <span class="math-expr">BC</span>, có <span class="math-expr">BC &perp; (SAB)</span>.</p>
+            <p>&bull; Góc phẳng nhị diện <span class="math-expr">[S, BC, A] = &ang;SBA</span> (màu vàng): <span class="math-expr">tan &ang;SBA =</span> ${fracHtml('SA', 'AB')} &rArr; <span class="math-expr">&ang;SBA &approx; ${dihedralDeg.toFixed(1).replace('.', ',')}&deg;</span>.</p>
+          `;
+        } else {
+          const SB = S.clone().sub(B);
+          const t = A.clone().sub(B).dot(SB) / SB.lengthSq();
+          const H = B.clone().add(SB.multiplyScalar(t));
+          addSegment(A, H, 0xdc2626, true);
+          addPoint(H, 0xdc2626, 0.065);
+          registerLabel('H', H.clone().add(new THREE.Vector3(-0.24, 0.1, 0.08)), true);
+          addPolygon([S, B, C], 0x10b981, 0.22);
+          addRightAngleMark(H, A.clone().sub(H), S.clone().sub(H), 0.2, 0xdc2626);
+          stepTitle.textContent = "Bước 4: Dựng khoảng cách từ chân đường cao A đến (SBC)";
+          stepExp.innerHTML = `
+            <p>&bull; Kẻ <span class="math-expr">AH &perp; SB</span> tại <span class="math-expr">H</span> (nét đứt); vì <span class="math-expr">BC &perp; (SAB)</span> nên <span class="math-expr">AH &perp; (SBC)</span>.</p>
+            <p>&bull; Vậy <span class="math-expr">d(A, (SBC)) = AH =</span> ${fracHtml('SA &middot; AB', '&radic;(SA&sup2; + AB&sup2;)')} <span class="math-expr">&approx; ${distRatio.toFixed(2).replace('.', ',')}a</span>.</p>
+          `;
+        }
+      } else if (currentModel === 1) {
+        const A = new THREE.Vector3(-1.2, 0, -1.2);
+        const B = new THREE.Vector3(-1.2, 0, 1.2);
+        const C = new THREE.Vector3(1.2, 0, 1.2);
+        const D = new THREE.Vector3(1.2, 0, -1.2);
+        const O = new THREE.Vector3(0, 0, 0);
+        const S = new THREE.Vector3(0, h, 0);
+        const M = B.clone().add(C).multiplyScalar(0.5);
+
+        addSegment(A, B, 0x94a3b8, true);
+        addSegment(A, D, 0x94a3b8, true);
+        addSegment(A, S, 0x94a3b8, true);
+        addSegment(B, C, 0x1e293b, false);
+        addSegment(C, D, 0x1e293b, false);
+        addSegment(S, B, 0x1e293b, false);
+        addSegment(S, C, 0x1e293b, false);
+        addSegment(S, D, 0x1e293b, false);
+
+        addSegment(A, C, 0x64748b, true);
+        addSegment(B, D, 0x64748b, true);
+        addSegment(S, O, 0xdc2626, true);
+        addRightAngleMark(O, new THREE.Vector3(0, 1, 0), C.clone().sub(O), 0.2, 0xdc2626);
+
+        const offsets1 = {
+          S: new THREE.Vector3(0, 0.24, 0),
+          A: new THREE.Vector3(-0.22, 0.08, -0.14),
+          B: new THREE.Vector3(-0.18, -0.16, 0.14),
+          C: new THREE.Vector3(0.14, -0.2, 0.14),
+          D: new THREE.Vector3(0.2, -0.14, -0.12),
+          O: new THREE.Vector3(0.28, -0.12, 0.14)
+        };
+        ['S', 'A', 'B', 'C', 'D', 'O'].forEach((name) => {
+          const map = { S, A, B, C, D, O };
+          addPoint(map[name], name === 'S' || name === 'O' ? 0xdc2626 : 0x0f172a);
+          registerLabel(name, map[name].clone().add(offsets1[name]), name === 'S' || name === 'O');
+        });
+
+        const edgeAngle = (Math.atan(paramH / (Math.SQRT2 / 2)) * 180) / Math.PI;
+        const faceAngle = (Math.atan(paramH / 0.5) * 180) / Math.PI;
+        const distO = (paramH * 0.5) / Math.sqrt(paramH * paramH + 0.25);
+
+        const pyData = await fetchPythonMetrics(1, paramH);
+        const v0 = pyData ? pyData.values[0] : `${edgeAngle.toFixed(1).replace('.', ',')}&deg;`;
+        const v1 = pyData ? pyData.values[1] : `${faceAngle.toFixed(1).replace('.', ',')}&deg;`;
+        const v2 = pyData ? pyData.values[2] : `${distO.toFixed(2).replace('.', ',')}a`;
+
+        metricsEl.innerHTML = `
+          <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center">
+            <div class="text-[11px] text-slate-500">Góc <span class="math-expr">(SC,(ABCD))</span></div>
+            <div class="text-sm font-bold text-blue-700">${v0}</div>
+          </div>
+          <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center">
+            <div class="text-[11px] text-slate-500">Nhị diện <span class="math-expr">[S,BC,O]</span></div>
+            <div class="text-sm font-bold text-amber-600">${v1}</div>
+          </div>
+          <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center">
+            <div class="text-[11px] text-slate-500"><span class="math-expr">d(O,(SBC))</span></div>
+            <div class="text-sm font-bold text-rose-600">${v2}</div>
+          </div>
+        `;
+
+        stepProblem.innerHTML = `<strong>Bài toán 2:</strong> Cho hình chóp tứ giác đều <span class="math-expr">S.ABCD</span> có cạnh đáy <span class="math-expr">a</span>, tâm đáy <span class="math-expr">O</span> và chiều cao <span class="math-expr">SO = ${paramH.toFixed(2).replace('.', ',')}a</span>.`;
+
+        if (currentStep === 0) {
+          stepTitle.textContent = "Bước 1: Xác định tâm đáy O và đường cao SO";
+          stepExp.innerHTML = `
+            <p>&bull; Đáy <span class="math-expr">ABCD</span> là hình vuông tâm <span class="math-expr">O</span>; đường cao <span class="math-expr">SO &perp; (ABCD)</span>.</p>
+            <p>&bull; Bấm <em>"Nhìn từ trên (Đáy)"</em> để thấy đỉnh <span class="math-expr">S</span> chiếu thẳng đứng xuống tâm <span class="math-expr">O</span>.</p>
+          `;
+        } else if (currentStep === 1) {
+          addAngleSector(C, O.clone().sub(C), S.clone().sub(C), 0.58, 0xf59e0b);
+          addPolygon([S, O, C], 0x3b82f6, 0.18);
+          stepTitle.textContent = "Bước 2: Góc giữa cạnh bên SC và mặt đáy (ABCD)";
+          stepExp.innerHTML = `
+            <p>&bull; Hình chiếu của <span class="math-expr">SC</span> lên <span class="math-expr">(ABCD)</span> là <span class="math-expr">OC =</span> ${fracHtml('a&radic;2', '2')}.</p>
+            <p>&bull; Góc <span class="math-expr">(SC, (ABCD)) = &ang;SCO</span>: <span class="math-expr">tan &ang;SCO =</span> ${fracHtml('SO', 'OC')} &rArr; <span class="math-expr">&ang;SCO &approx; ${edgeAngle.toFixed(1).replace('.', ',')}&deg;</span>.</p>
+          `;
+        } else if (currentStep === 2) {
+          addSegment(O, M, 0x059669, true);
+          addSegment(S, M, 0x059669, false);
+          addPoint(M, 0x059669, 0.06);
+          registerLabel('M', M.clone().add(new THREE.Vector3(-0.18, -0.18, 0.16)), true);
+          addAngleSector(M, O.clone().sub(M), S.clone().sub(M), 0.55, 0xf59e0b);
+          addPolygon([S, B, C], 0x10b981, 0.2);
+          stepTitle.textContent = "Bước 3: Góc phẳng nhị diện [S, BC, O]";
+          stepExp.innerHTML = `
+            <p>&bull; <span class="math-expr">M</span> là trung điểm <span class="math-expr">BC</span>, có <span class="math-expr">OM &perp; BC</span> và <span class="math-expr">SM &perp; BC</span>.</p>
+            <p>&bull; Góc phẳng nhị diện <span class="math-expr">[S, BC, O] = &ang;SMO</span>: <span class="math-expr">tan &ang;SMO =</span> ${fracHtml('SO', 'OM')} &rArr; <span class="math-expr">&ang;SMO &approx; ${faceAngle.toFixed(1).replace('.', ',')}&deg;</span>.</p>
+          `;
+        } else {
+          addSegment(O, M, 0x059669, true);
+          addSegment(S, M, 0x059669, false);
+          const SM = S.clone().sub(M);
+          const t = O.clone().sub(M).dot(SM) / SM.lengthSq();
+          const K = M.clone().add(SM.multiplyScalar(t));
+          addSegment(O, K, 0xdc2626, true);
+          addPoint(M, 0x059669, 0.055);
+          addPoint(K, 0xdc2626, 0.065);
+          registerLabel('M', M.clone().add(new THREE.Vector3(-0.18, -0.18, 0.16)), false);
+          registerLabel('K', K.clone().add(new THREE.Vector3(0.22, 0.08, 0.08)), true);
+          addPolygon([S, B, C], 0x10b981, 0.2);
+          stepTitle.textContent = "Bước 4: Khoảng cách từ tâm đáy O đến mặt bên (SBC)";
+          stepExp.innerHTML = `
+            <p>&bull; <span class="math-expr">BC &perp; (SOM)</span> nên <span class="math-expr">(SBC) &perp; (SOM)</span> theo giao tuyến <span class="math-expr">SM</span>.</p>
+            <p>&bull; Kẻ <span class="math-expr">OK &perp; SM</span> (nét đứt) &rArr; <span class="math-expr">d(O, (SBC)) = OK &approx; ${distO.toFixed(2).replace('.', ',')}a</span>.</p>
+          `;
+        }
+      } else {
+        // MODEL 2: Lăng trụ đứng tam giác đều ABC.A'B'C' (góc nhìn chuẩn SGK)
+        const A = new THREE.Vector3(-0.75, 0, -1.05);
+        const B = new THREE.Vector3(-1.15, 0, 0.95);
+        const C = new THREE.Vector3(1.25, 0, 0.15);
+        const A1 = A.clone().add(new THREE.Vector3(0, h, 0));
+        const B1 = B.clone().add(new THREE.Vector3(0, h, 0));
+        const C1 = C.clone().add(new THREE.Vector3(0, h, 0));
+        const M = B.clone().add(C).multiplyScalar(0.5);
+
+        // Cạnh khuất: AC (nét đứt xám) và đường cao AA' (nét đứt đỏ)
+        addSegment(A, C, 0x94a3b8, true);
+        addSegment(A, A1, 0xdc2626, true);
+
+        // Các cạnh thấy (nét liền)
+        addSegment(A, B, 0x1e293b, true);
+        addSegment(B, C, 0x1e293b, false);
+        addSegment(A1, B1, 0x1e293b, false);
+        addSegment(B1, C1, 0x1e293b, false);
+        addSegment(C1, A1, 0x1e293b, false);
+        addSegment(B, B1, 0x1e293b, false);
+        addSegment(C, C1, 0x1e293b, false);
+        const offsets2 = {
+          A: new THREE.Vector3(-0.2, -0.14, -0.1),
+          B: new THREE.Vector3(0, -0.2, 0.16),
+          C: new THREE.Vector3(0.2, -0.14, -0.1),
+          "A'": new THREE.Vector3(-0.2, 0.2, -0.1),
+          "B'": new THREE.Vector3(0, 0.24, 0.14),
+          "C'": new THREE.Vector3(0.2, 0.2, -0.1)
+        };
+        const labelMap = { A, B, C, "A'": A1, "B'": B1, "C'": C1 };
+        Object.entries(labelMap).forEach(([name, pt]) => {
+          addPoint(pt, name.startsWith('A') ? 0xdc2626 : 0x0f172a);
+          registerLabel(name, pt.clone().add(offsets2[name]), name.startsWith('A'));
+        });
+
+        const angB = (Math.atan(paramH / 1.0) * 180) / Math.PI;
+        const dihedralBC = (Math.atan(paramH / (Math.sqrt(3) / 2)) * 180) / Math.PI;
+        const distA = (paramH * (Math.sqrt(3) / 2)) / Math.sqrt(paramH * paramH + 0.75);
+
+        const pyData = await fetchPythonMetrics(2, paramH);
+        const v0 = pyData ? pyData.values[0] : `${angB.toFixed(1).replace('.', ',')}&deg;`;
+        const v1 = pyData ? pyData.values[1] : `${dihedralBC.toFixed(1).replace('.', ',')}&deg;`;
+        const v2 = pyData ? pyData.values[2] : `${distA.toFixed(2).replace('.', ',')}a`;
+
+        metricsEl.innerHTML = `
+          <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center">
+            <div class="text-[11px] text-slate-500">Góc <span class="math-expr">(A'B,(ABC))</span></div>
+            <div class="text-sm font-bold text-blue-700">${v0}</div>
+          </div>
+          <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center">
+            <div class="text-[11px] text-slate-500">Nhị diện <span class="math-expr">[A',BC,A]</span></div>
+            <div class="text-sm font-bold text-amber-600">${v1}</div>
+          </div>
+          <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center">
+            <div class="text-[11px] text-slate-500"><span class="math-expr">d(A,(A'BC))</span></div>
+            <div class="text-sm font-bold text-rose-600">${v2}</div>
+          </div>
+        `;
+
+        stepProblem.innerHTML = `<strong>Bài toán 3:</strong> Lăng trụ đứng <span class="math-expr">ABC.A'B'C'</span> đáy tam giác đều cạnh <span class="math-expr">a</span>, cạnh bên <span class="math-expr">AA' = ${paramH.toFixed(2).replace('.', ',')}a</span>.`;
+
+        if (currentStep === 0) {
+          stepTitle.textContent = "Bước 1: Nhận diện tính chất lăng trụ đứng";
+          stepExp.innerHTML = `
+            <p>&bull; Các cạnh bên <span class="math-expr">AA', BB', CC'</span> cùng vuông góc với hai mặt đáy.</p>
+            <p>&bull; Bấm <em>"Nhìn từ trên (Đáy)"</em> để thấy hai tam giác đáy trùng khít theo phương thẳng đứng.</p>
+          `;
+        } else if (currentStep === 1) {
+          addSegment(A1, B, 0x2563eb, false);
+          addAngleSector(B, A.clone().sub(B), A1.clone().sub(B), 0.55, 0xf59e0b);
+          addPolygon([A1, A, B], 0x3b82f6, 0.18);
+          stepTitle.textContent = "Bước 2: Góc giữa đường thẳng A'B và mặt đáy (ABC)";
+          stepExp.innerHTML = `
+            <p>&bull; Hình chiếu của <span class="math-expr">A'B</span> lên <span class="math-expr">(ABC)</span> là <span class="math-expr">AB</span>.</p>
+            <p>&bull; Góc <span class="math-expr">(A'B, (ABC)) = &ang;A'BA</span>: <span class="math-expr">tan &ang;A'BA =</span> ${fracHtml('AA\'', 'AB')} &rArr; <span class="math-expr">&ang;A'BA &approx; ${angB.toFixed(1).replace('.', ',')}&deg;</span>.</p>
+          `;
+        } else if (currentStep === 2) {
+          addSegment(A, M, 0x059669, true);
+          addSegment(A1, M, 0x059669, false);
+          addPoint(M, 0x059669, 0.06);
+          registerLabel('M', M.clone().add(new THREE.Vector3(0.18, -0.16, 0.16)), true);
+          addAngleSector(M, A.clone().sub(M), A1.clone().sub(M), 0.55, 0xf59e0b);
+          addPolygon([A1, B, C], 0x10b981, 0.2);
+          stepTitle.textContent = "Bước 3: Góc phẳng nhị diện [A', BC, A]";
+          stepExp.innerHTML = `
+            <p>&bull; <span class="math-expr">M</span> là trung điểm <span class="math-expr">BC</span>, có <span class="math-expr">BC &perp; (A'AM)</span> và <span class="math-expr">AM =</span> ${fracHtml('a&radic;3', '2')}.</p>
+            <p>&bull; Góc phẳng nhị diện <span class="math-expr">[A', BC, A] = &ang;A'MA</span>: <span class="math-expr">tan &ang;A'MA =</span> ${fracHtml('AA\'', 'AM')} &rArr; <span class="math-expr">&ang;A'MA &approx; ${dihedralBC.toFixed(1).replace('.', ',')}&deg;</span>.</p>
+          `;
+        } else {
+          addSegment(A, M, 0x059669, true);
+          addSegment(A1, M, 0x059669, false);
+          const A1M = A1.clone().sub(M);
+          const t = A.clone().sub(M).dot(A1M) / A1M.lengthSq();
+          const H = M.clone().add(A1M.multiplyScalar(t));
+          addSegment(A, H, 0xdc2626, true);
+          addPoint(M, 0x059669, 0.055);
+          addPoint(H, 0xdc2626, 0.065);
+          registerLabel('M', M.clone().add(new THREE.Vector3(0.18, -0.16, 0.16)), false);
+          registerLabel('H', H.clone().add(new THREE.Vector3(0.22, 0.08, 0.08)), true);
+          addPolygon([A1, B, C], 0x10b981, 0.2);
+          stepTitle.textContent = "Bước 4: Khoảng cách từ điểm A đến mặt phẳng (A'BC)";
+          stepExp.innerHTML = `
+            <p>&bull; <span class="math-expr">(A'BC) &perp; (A'AM)</span> theo giao tuyến <span class="math-expr">A'M</span>.</p>
+            <p>&bull; Kẻ <span class="math-expr">AH &perp; A'M</span> (nét đứt) &rArr; <span class="math-expr">d(A, (A'BC)) = AH &approx; ${distA.toFixed(2).replace('.', ',')}a</span>.</p>
+          `;
+        }
+      }
+    }
+
+    function selectModel(idx) {
+      currentModel = idx;
+      currentStep = 0;
+      for (let i = 0; i < 3; i++) {
+        const btn = document.getElementById(`m-btn-${i}`);
+        btn.className = i === idx
+          ? 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-blue-600 text-white shadow-sm cursor-pointer transition'
+          : 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 cursor-pointer transition';
+      }
+      buildScene();
+    }
+
+    function onHeightChange() {
+      paramH = parseFloat(document.getElementById('height-slider').value);
+      document.getElementById('height-badge').innerHTML = `<span class="math-expr">h = ${paramH.toFixed(2).replace('.', ',')}a</span>`;
+      buildScene();
+    }
+
+    function setHeightPreset(val) {
+      document.getElementById('height-slider').value = val;
+      onHeightChange();
+    }
+
+    function nextStep() {
+      currentStep = (currentStep + 1) % 4;
+      buildScene();
+    }
+
+    function prevStep() {
+      currentStep = (currentStep + 3) % 4;
+      buildScene();
+    }
+
+    function goStep(s) {
+      currentStep = s;
+      buildScene();
+    }
+
+    function updateLabelsPosition() {
+      if (!showLabels) return;
+      const w = wrap.clientWidth;
+      const h = wrap.clientHeight;
+      labelElements.forEach(({ el, pos3d }) => {
+        const proj = pos3d.clone().project(camera);
+        if (proj.z > 1) {
+          el.style.display = 'none';
+        } else {
+          el.style.display = 'block';
+          const x = (proj.x * 0.5 + 0.5) * w;
+          const y = (-proj.y * 0.5 + 0.5) * h;
+          el.style.left = `${x}px`;
+          el.style.top = `${y}px`;
+        }
+      });
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      updateLabelsPosition();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      if (!wrap.clientWidth || !wrap.clientHeight) return;
+      camera.aspect = wrap.clientWidth / wrap.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+    });
+
+    setCameraView('default');
+    buildScene();
+    animate();
+  </script>
+</body>
+</html>
